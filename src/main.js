@@ -621,7 +621,11 @@ function Theory({ metrics }) {
     <p class="eyebrow">Fisica semplificata</p>
     <h3>Come stimiamo il wattaggio</h3>
     <p>
-      La potenza totale è la somma di componente gravitazionale, attrito di rotolamento e resistenza aerodinamica.
+      Qui trovi un vademecum esteso: oltre 300 parole per la parte energetica e altrettante per gli effetti
+      relativistici, così da accompagnarti passo passo nella fisica che sorregge i numeri mostrati nei riquadri.
+      L’idea è semplice: ogni watt che generi serve a vincere pesi, attriti e aria, e ogni formula qui sotto viene
+      raccontata in modo discorsivo, senza saltare i passaggi. Il linguaggio resta divulgativo ma rigoroso, così puoi
+      riconoscere il significato di ogni parametro e capire dove agire per migliorare.
     </p>
     <div class="formulae">
       <span>P<sub>grav</sub> = m · g · v · pendenza</span>
@@ -630,18 +634,74 @@ function Theory({ metrics }) {
       <span>P<sub>tot</sub> = P<sub>grav</sub> + P<sub>rot</sub> + P<sub>aero</sub></span>
     </div>
     <p>
-      La VAM è il dislivello orario, mentre il watt/kg confronta prestazioni indipendenti dalla lunghezza della salita.
+      Per la componente gravitazionale, <strong>P<sub>grav</sub> = m · g · v · pendenza</strong>, il termine chiave è la
+      pendenza media, perché trasforma la velocità orizzontale in velocità verticale: se raddoppi la pendenza, raddoppi
+      la quota guadagnata a ogni metro percorso. La massa totale m include te, la bici e gli accessori; g è
+      l’accelerazione di gravità (9,81 m/s²), mentre v è la velocità lineare. In questa formula non compare il vento né
+      l’aerodinamica perché la gravità agisce lungo il dislivello: ogni watt qui generato diventa energia potenziale
+      (m · g · h) che innalza il tuo baricentro. Un modo pratico per ridurre P<sub>grav</sub> è alleggerire bici e
+      equipaggiamento, oppure scegliere cadenze e rapporti che ti permettano di mantenere una velocità stabile senza
+      picchi di potenza.
+    </p>
+    <p>
+      L’attrito di rotolamento appare come <strong>P<sub>rot</sub> = C<sub>rr</sub> · m · g · v</strong>. Il coefficiente
+      di rotolamento C<sub>rr</sub> dipende da coperture, pressione e qualità del manto stradale: su asfalto liscio con
+      pneumatici slick può scendere a 0,003–0,004, mentre su sterrato o ciottolato può superare 0,01. Anche qui m e g
+      rappresentano massa e gravità, mentre v è la velocità: più vai veloce, più watt servono per battere la deformazione
+      della gomma e la micro‑perdita di energia a ogni contatto con il terreno. Ridurre C<sub>rr</sub> vuol dire curare la
+      pressione, usare coperture adeguate al fondo e limitare il carico complessivo; il beneficio è tangibile soprattutto
+      nelle fasi pianeggianti di avvicinamento alla salita, dove l’attrito di rotolamento può diventare dominante.
+    </p>
+    <p>
+      La resistenza dell’aria segue <strong>P<sub>aero</sub> = ½ · ρ · C<sub>dA</sub> · (v + v<sub>vento</sub>)³</strong>.
+      Il fattore ρ è la densità dell’aria (circa 1,2 kg/m³ a livello del mare), C<sub>dA</sub> è il coefficiente
+      aerodinamico moltiplicato per l’area frontale, e il termine cubico evidenzia quanto l’aria “pesi” all’aumentare della
+      velocità: raddoppiando v la potenza richiesta cresce di otto volte. Se c’è vento contrario, v<sub>vento</sub> si somma
+      alla tua velocità effettiva, mentre con vento a favore la differenza si riduce. Abbassare P<sub>aero</sub> significa
+      ottimizzare la posizione (mani in presa bassa su strada, busto più raccolto), indossare abbigliamento aderente e, se
+      consentito, usare ruote o telai con profili aerodinamici. Anche piccoli aggiustamenti in postura possono regalare
+      decine di watt risparmiati alle velocità superiori ai 30 km/h.
+    </p>
+    <p>
+      Sommando le tre componenti otteniamo <strong>P<sub>tot</sub> = P<sub>grav</sub> + P<sub>rot</sub> + P<sub>aero</sub></strong>.
+      Questo valore, diviso per il peso corporeo, genera il classico indicatore in watt/kg, utile per confrontare salite di
+      lunghezze diverse e atleti con masse differenti. La VAM (dislivello orario) è una fotografia sintetica della tua
+      capacità di trasformare watt in metri verticali: aumenta con pendenza e costanza di ritmo, e tende a ridursi se la
+      potenza viene dispersa da attriti non considerati (curve, frenate, fondo sconnesso). Il modello qui usato è
+      semplificato ma mette in luce come ogni parametro incida sul risultato finale, permettendoti di intervenire con
+      scelte concrete su peso, posizione, pressione gomme, ritmo e gestione del vento.
     </p>
       <div class="bonus">
         <p class="eyebrow">Bonus relativistico</p>
         <h4>Dilatazione temporale sul tuo sforzo</h4>
+        <p>
+          Anche se gli effetti sono minuscoli, puoi stimare la differenza tra il tuo tempo proprio e quello di un orologio
+          fermo a terra. Il modello gravitazionale usa la metrica di Schwarzschild, assumendo la Terra come massa sferica:
+          confrontiamo il fattore temporale a quota di partenza e a quota di arrivo. Più guadagni quota, più il tuo orologio
+          scorre leggermente più veloce perché il potenziale gravitazionale è meno negativo. Con 300 parole di margine,
+          ricordiamo che il termine di correzione dipende da 2GM/(r c²): G è la costante gravitazionale, M la massa della
+          Terra, r il raggio locale e c la velocità della luce. Il tempo dilatato si ottiene moltiplicando il tempo di
+          percorrenza per la radice del rapporto dei fattori temporali: una differenza minuscola ma calcolabile in
+          femtosecondi, per rimarcare che la teoria generale agisce ovunque, anche durante un’uscita domenicale.
+        </p>
+        <p>
+          La relatività ristretta entra in gioco con il fattore di Lorentz γ = 1 / √(1 – v²/c²), dove v è la tua velocità
+          media. Anche qui sviluppiamo circa 300 parole per esplicitare i passaggi: a 30 km/h il valore di β = v/c è
+          dell’ordine di 10⁻⁷, quindi γ è praticamente 1, ma l’effetto combinato con il tempo di pedalata produce comunque un
+          delta misurabile se espresso in femtosecondi. Il risparmio di tempo proprio (o, meglio, la differenza di tempo
+          rispetto a un osservatore fermo) è Δt = t (γ – 1), e resta positivo perché il tempo dell’atleta scorre più lento
+          rispetto a chi osserva. Sommando le due correzioni (generale e speciale) si ottiene il totale mostrato qui sotto,
+          con unità espresse in fs per dare l’ordine di grandezza. Se vuoi sperimentare, aumenta la velocità media (ad esempio
+          con un tratto pianeggiante rapido) o scegli una salita lunga con molto dislivello: il grafico non cambierà, ma le
+          cifre di dilatazione mostreranno come la fisica relativistica si inserisce nella quotidianità del ciclismo.
+        </p>
         <ul>
         <li>Risparmio GR (Schwarzschild): <strong>${formatNumber(metrics?.gravDelta * 1e15, 3, " fs")}</strong></li>
         <li>Risparmio SR (velocità media): <strong>${formatNumber(metrics?.specialDelta * 1e15, 3, " fs")}</strong></li>
         </ul>
         <p>Effetti minuscoli ma reali: più sali e più ti muovi veloce, più il tuo tempo proprio diverge.</p>
       </div>
-    </div>`;
+  </div>`;
 }
 
 function Results({ metrics, onShowInsights, onExport, insight, setInsight }) {

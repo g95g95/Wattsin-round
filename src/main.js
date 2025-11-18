@@ -1,3 +1,6 @@
+const { useMemo, useState, useEffect, useRef } = React;
+const html = htm.bind(React.createElement);
+
 const bikeCatalog = [
   { name: "Specialized Tarmac SL8", weight: 6.6, type: "Corsa" },
   { name: "Trek Émonda SLR 9", weight: 6.8, type: "Corsa" },
@@ -8,6 +11,8 @@ const bikeCatalog = [
   { name: "Orbea Oiz OMX", weight: 10.6, type: "MTB" },
   { name: "Canyon Lux World Cup", weight: 10.1, type: "MTB" },
   { name: "Santa Cruz Blur CC", weight: 10.4, type: "MTB" },
+  { name: "Wilier Rave SLR", weight: 8.2, type: "Gravel" },
+  { name: "Cannondale SuperSix Evo LAB71", weight: 6.9, type: "Corsa" },
 ];
 
 const performanceBands = [
@@ -52,27 +57,8 @@ const comparisonCurves = {
   ],
 };
 
-const state = {
-  form: {
-    age: "",
-    sex: "",
-    riderWeight: "",
-    bikeWeight: "",
-    bikeModel: "",
-    bikeType: "",
-    elevationGain: "",
-    climbName: "",
-    climbDate: "",
-    headwind: "",
-    time: "",
-    distance: "",
-  },
-  metrics: null,
-};
-
-function formatNumber(value, decimals = 1, suffix = "") {
-  return Number.isFinite(value) ? `${value.toFixed(decimals)}${suffix}` : "-";
-}
+const formatNumber = (value, decimals = 1, suffix = "") =>
+  Number.isFinite(value) ? `${value.toFixed(decimals)}${suffix}` : "-";
 
 function parseDuration(duration) {
   const parts = duration.split(":").map(Number);
@@ -83,7 +69,7 @@ function parseDuration(duration) {
 }
 
 function computeRelativity(timeSeconds, gain, speed) {
-  const c = 299792458;
+  const c = 299_792_458;
   const earthGmOverRc2 = 6.957e-10;
   const earthRadius = 6_371_000;
 
@@ -140,256 +126,523 @@ function computeMetrics(form) {
   };
 }
 
-function populateCatalog() {
-  const list = document.getElementById("bike-models");
-  bikeCatalog.forEach((bike) => {
-    const option = document.createElement("option");
-    option.value = bike.name;
-    option.textContent = `${bike.name} (${bike.type})`;
-    list.appendChild(option);
-  });
-}
-
-function setSection(step) {
-  document.querySelectorAll("#progress-steps .progress-step").forEach((el) => {
-    el.classList.toggle("active", Number(el.dataset.step) <= step);
-  });
-  document.getElementById("intro-section").hidden = step !== 1;
-  document.getElementById("form-section").hidden = step !== 2;
-  document.getElementById("results-section").hidden = step !== 3;
-}
-
-function switchTab(name) {
-  document.querySelectorAll("[data-tab]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.tab === name);
-  });
-  document.getElementById("tab-pesi").hidden = name !== "pesi";
-  document.getElementById("tab-salita").hidden = name !== "salita";
-}
-
-function switchInsight(name) {
-  document.querySelectorAll("[data-insight]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.insight === name);
-  });
-  document.getElementById("insight-confronto").hidden = name !== "confronto";
-  document.getElementById("insight-teoria").hidden = name !== "teoria";
-}
-
-function updateFormFromInputs() {
-  state.form.age = document.getElementById("age").value;
-  state.form.sex = document.getElementById("sex").value;
-  state.form.riderWeight = document.getElementById("rider-weight").value;
-  state.form.bikeWeight = document.getElementById("bike-weight").value;
-  state.form.bikeModel = document.getElementById("bike-model").value;
-  state.form.bikeType = document.getElementById("bike-type").value;
-  state.form.elevationGain = document.getElementById("elevation").value;
-  state.form.climbName = document.getElementById("climb-name").value;
-  state.form.climbDate = document.getElementById("climb-date").value;
-  state.form.headwind = document.getElementById("headwind").value;
-  state.form.time = document.getElementById("duration").value;
-  state.form.distance = document.getElementById("distance").value;
-}
-
-function autofillBike() {
-  const model = document.getElementById("bike-model").value;
-  const bike = bikeCatalog.find((b) => b.name === model);
-  if (bike) {
-    document.getElementById("bike-weight").value = bike.weight;
-    document.getElementById("bike-type").value = bike.type;
-  }
-}
-
-function validateInputs() {
-  updateFormFromInputs();
+function validateForm(form) {
   const required = ["age", "sex", "riderWeight", "bikeWeight", "elevationGain", "time", "distance"];
-  const missing = required.filter((key) => !state.form[key]);
-  if (missing.length) return "Compila tutti i campi obbligatori: età, sesso, pesi, dislivello, tempo e distanza.";
-  const numbers = ["riderWeight", "bikeWeight", "elevationGain", "distance"].map((key) => Number(state.form[key]));
+  const missing = required.filter((key) => !form[key]);
+  if (missing.length) return "Compila i campi essenziali: età, sesso, pesi, dislivello, tempo e distanza.";
+
+  const numbers = ["riderWeight", "bikeWeight", "elevationGain", "distance"].map((key) => Number(form[key]));
   if (numbers.some((n) => !Number.isFinite(n) || n <= 0)) {
     return "Verifica che pesi, dislivello e distanza siano numeri positivi.";
   }
-  const seconds = parseDuration(state.form.time);
+
+  const seconds = parseDuration(form.time);
   if (!seconds || seconds <= 0) return "Il tempo deve essere nel formato hh:mm:ss e maggiore di zero.";
-  const distance = Number(state.form.distance) * 1000;
-  const grade = Number(state.form.elevationGain) / distance;
+  const distance = Number(form.distance) * 1000;
+  const grade = Number(form.elevationGain) / distance;
   if (grade > 0.25 || grade < 0.02) {
     return "La pendenza media sembra anomala (<2% o >25%). Controlla i dati.";
   }
   return null;
 }
 
-function openModal(message, proceed) {
-  const modal = document.getElementById("modal");
-  document.getElementById("modal-message").textContent = message;
-  modal.hidden = false;
-  const confirm = () => {
-    modal.hidden = true;
-    proceed();
-  };
-  const close = () => {
-    modal.hidden = true;
-  };
-  document.getElementById("modal-confirm").onclick = confirm;
-  document.getElementById("modal-close").onclick = close;
+function ProgressBar({ step }) {
+  const steps = ["Presentazione", "Dati", "Risultati"];
+  return html`<div class="progress">
+    ${steps.map(
+      (label, idx) => html`<div class=${`progress-step ${step >= idx + 1 ? "active" : ""}`}>
+        <span>${idx + 1}</span>
+        <p>${label}</p>
+      </div>`
+    )}
+  </div>`;
 }
 
-function renderResults(metrics) {
-  document.getElementById("vam-value").textContent = formatNumber(metrics.vam) + " m/h";
-  document.getElementById("power-value").textContent = formatNumber(metrics.totalPower, 0) + " W";
-  document.getElementById("wkg-value").textContent = formatNumber(metrics.wkg, 2);
-  document.getElementById("band-value").textContent = metrics.category;
-  document.getElementById("grade-value").textContent = formatNumber(metrics.grade, 1) + "%";
-  document.getElementById("speed-value").textContent = formatNumber(metrics.avgSpeed, 1) + " km/h";
-  document.getElementById("grav-delta").textContent = formatNumber(metrics.gravDelta * 1000, 3) + " ms";
-  document.getElementById("sr-delta").textContent = formatNumber(metrics.specialDelta * 1000, 3) + " ms";
+function Intro({ form, setForm, onNext, banner }) {
+  return html`<section class="panel hero">
+    <div>
+      <p class="eyebrow">Climbing lab</p>
+      <h1>Watts in Round</h1>
+      <p class="subtitle">
+        Flusso guidato, calcoli in tempo reale e confronto con i pro per stimare i tuoi watt/kg.
+        Inserisci età e sesso per personalizzare le soglie.
+      </p>
+      <div class="grid two">
+        <label>
+          <span>Età</span>
+          <input
+            type="number"
+            min="10"
+            max="90"
+            placeholder="es. 32"
+            value=${form.age}
+            onInput=${(e) => setForm((f) => ({ ...f, age: e.target.value }))}
+          />
+        </label>
+        <label>
+          <span>Sesso biologico</span>
+          <select value=${form.sex} onChange=${(e) => setForm((f) => ({ ...f, sex: e.target.value }))}>
+            <option value="">Seleziona</option>
+            <option value="M">Maschile</option>
+            <option value="F">Femminile</option>
+            <option value="Altro">Preferisco non indicare</option>
+          </select>
+        </label>
+      </div>
+      <div class="hero-actions">
+        <button class="primary" onClick=${onNext}>Avanti</button>
+        ${banner}
+      </div>
+    </div>
+    <div class="hero-panel">
+      <p class="eyebrow">Cosa troverai</p>
+      <ul>
+        <li>Catalogo bici con peso precompilato</li>
+        <li>Verifica di coerenza prima del calcolo</li>
+        <li>Grafico confronto ed esportazione PNG</li>
+        <li>Spiegazione fisica e bonus relativistico</li>
+      </ul>
+    </div>
+  </section>`;
 }
 
-function drawComparisonChart(metrics) {
-  const canvas = document.getElementById("comparison-chart");
-  const ctx = canvas.getContext("2d");
-  const dpr = window.devicePixelRatio || 1;
-  const width = canvas.clientWidth || canvas.parentElement.clientWidth;
-  const height = canvas.clientHeight || 320;
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-  ctx.save();
-  ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, width, height);
+function Tabs({ active, onChange, labels }) {
+  return html`<div class="tab-bar">
+    ${labels.map(
+      ({ id, title }) => html`<button
+        class=${active === id ? "active" : ""}
+        onClick=${() => onChange(id)}
+      >${title}</button>`
+    )}
+  </div>`;
+}
 
-  const margin = { top: 20, right: 18, bottom: 40, left: 50 };
-  const chartW = width - margin.left - margin.right;
-  const chartH = height - margin.top - margin.bottom;
+function WeightTab({ form, setForm }) {
+  useEffect(() => {
+    const selected = bikeCatalog.find((bike) => bike.name === form.bikeModel);
+    if (selected) {
+      setForm((f) => ({ ...f, bikeWeight: selected.weight, bikeType: selected.type }));
+    }
+  }, [form.bikeModel, setForm]);
 
-  const maxX = 65;
-  const maxY = 8;
-  const toX = (x) => margin.left + (x / maxX) * chartW;
-  const toY = (y) => margin.top + chartH - (y / maxY) * chartH;
+  return html`<div class="grid two fade-in">
+    <label>
+      <span>Modello bici</span>
+      <input
+        list="bike-models"
+        placeholder="Inizia a digitare un modello"
+        value=${form.bikeModel}
+        onInput=${(e) => setForm((f) => ({ ...f, bikeModel: e.target.value }))}
+      />
+      <datalist id="bike-models">
+        ${bikeCatalog.map((bike) => html`<option value=${bike.name}>${bike.name} (${bike.type})</option>`)}</datalist>
+    </label>
+    <label>
+      <span>Tipologia</span>
+      <select value=${form.bikeType} onChange=${(e) => setForm((f) => ({ ...f, bikeType: e.target.value }))}>
+        <option value="">Seleziona</option>
+        <option value="Corsa">Corsa</option>
+        <option value="MTB">MTB</option>
+        <option value="Gravel">Gravel</option>
+      </select>
+    </label>
+    <label>
+      <span>Peso atleta (kg)</span>
+      <input
+        type="number"
+        min="30"
+        placeholder="es. 68"
+        value=${form.riderWeight}
+        onInput=${(e) => setForm((f) => ({ ...f, riderWeight: e.target.value }))}
+      />
+    </label>
+    <label>
+      <span>Peso bici (kg)</span>
+      <input
+        type="number"
+        min="5"
+        step="0.1"
+        placeholder="es. 7.2"
+        value=${form.bikeWeight}
+        onInput=${(e) => setForm((f) => ({ ...f, bikeWeight: e.target.value }))}
+      />
+    </label>
+  </div>`;
+}
 
-  ctx.strokeStyle = "rgba(148,163,184,0.3)";
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 5; i++) {
-    const y = margin.top + (chartH / 5) * i;
-    ctx.beginPath();
-    ctx.moveTo(margin.left, y);
-    ctx.lineTo(margin.left + chartW, y);
-    ctx.stroke();
-  }
-  for (let i = 1; i <= 6; i++) {
-    const x = margin.left + (chartW / 6) * i;
-    ctx.beginPath();
-    ctx.moveTo(x, margin.top);
-    ctx.lineTo(x, margin.top + chartH);
-    ctx.stroke();
-  }
+function ClimbTab({ form, setForm }) {
+  return html`<div class="grid two fade-in">
+    <label>
+      <span>Nome salita</span>
+      <input
+        type="text"
+        placeholder="es. Zoncolan"
+        value=${form.climbName}
+        onInput=${(e) => setForm((f) => ({ ...f, climbName: e.target.value }))}
+      />
+    </label>
+    <label>
+      <span>Data (opzionale)</span>
+      <input type="date" value=${form.climbDate} onInput=${(e) => setForm((f) => ({ ...f, climbDate: e.target.value }))} />
+    </label>
+    <label>
+      <span>Dislivello (m)</span>
+      <input
+        type="number"
+        min="50"
+        placeholder="es. 1200"
+        value=${form.elevationGain}
+        onInput=${(e) => setForm((f) => ({ ...f, elevationGain: e.target.value }))}
+      />
+    </label>
+    <label>
+      <span>Distanza (km)</span>
+      <input
+        type="number"
+        step="0.1"
+        placeholder="es. 12.5"
+        value=${form.distance}
+        onInput=${(e) => setForm((f) => ({ ...f, distance: e.target.value }))}
+      />
+    </label>
+    <label>
+      <span>Tempo (hh:mm:ss)</span>
+      <input
+        type="text"
+        placeholder="00:45:30"
+        value=${form.time}
+        onInput=${(e) => setForm((f) => ({ ...f, time: e.target.value }))}
+      />
+    </label>
+    <label>
+      <span>Vento (m/s, opzionale)</span>
+      <input
+        type="number"
+        step="0.1"
+        placeholder="positivo = contrario"
+        value=${form.headwind}
+        onInput=${(e) => setForm((f) => ({ ...f, headwind: e.target.value }))}
+      />
+    </label>
+  </div>`;
+}
 
-  const colors = ["#22d3ee", "#0ea5e9", "#f59e0b", "#a78bfa"];
-  Object.entries(comparisonCurves).forEach(([label, points], idx) => {
-    ctx.strokeStyle = colors[idx % colors.length];
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    points.forEach(([x, y], i) => {
-      const px = toX(x);
-      const py = toY(y);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    });
-    ctx.stroke();
+function Modal({ message, onClose, onConfirm }) {
+  return html`<div class="modal-backdrop">
+    <div class="modal">
+      <h4>Controllo di compatibilità</h4>
+      <p>${message}</p>
+      <div class="modal-actions">
+        <button class="ghost" onClick=${onClose}>Torna indietro</button>
+        <button class="primary" onClick=${onConfirm}>Procedi comunque</button>
+      </div>
+    </div>
+  </div>`;
+}
 
-    ctx.fillStyle = colors[idx % colors.length];
-    points.forEach(([x, y]) => {
-      const px = toX(x);
-      const py = toY(y);
+function InsightChart({ metrics }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.parentElement.clientWidth;
+    const height = 320;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, width, height);
+
+    const margin = { top: 24, right: 18, bottom: 48, left: 56 };
+    const chartW = width - margin.left - margin.right;
+    const chartH = height - margin.top - margin.bottom;
+
+    const maxX = 65;
+    const maxY = 8;
+    const toX = (x) => margin.left + (x / maxX) * chartW;
+    const toY = (y) => margin.top + chartH - (y / maxY) * chartH;
+
+    ctx.strokeStyle = "rgba(148,163,184,0.2)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 5; i++) {
+      const y = margin.top + (chartH / 5) * i;
       ctx.beginPath();
-      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(margin.left, y);
+      ctx.lineTo(margin.left + chartW, y);
+      ctx.stroke();
+    }
+    for (let i = 1; i <= 6; i++) {
+      const x = margin.left + (chartW / 6) * i;
+      ctx.beginPath();
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x, margin.top + chartH);
+      ctx.stroke();
+    }
+
+    const colors = ["#22d3ee", "#0ea5e9", "#f59e0b", "#a78bfa"];
+    Object.entries(comparisonCurves).forEach(([label, points], idx) => {
+      ctx.strokeStyle = colors[idx % colors.length];
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      points.forEach(([x, y], i) => {
+        const px = toX(x);
+        const py = toY(y);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = colors[idx % colors.length];
+      points.forEach(([x, y]) => {
+        ctx.beginPath();
+        ctx.arc(toX(x), toY(y), 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#e2e8f0";
+      ctx.font = "12px 'Inter', sans-serif";
+      ctx.fillText(label, toX(points[points.length - 1][0]) - 28, toY(points[points.length - 1][1]) - 10);
     });
 
-    ctx.fillStyle = "#e2e8f0";
-    ctx.font = "12px Inter, sans-serif";
-    ctx.fillText(label, toX(points[points.length - 1][0]) - 30, toY(points[points.length - 1][1]) - 8);
-  });
+    if (metrics) {
+      ctx.fillStyle = "#f97316";
+      const px = toX(metrics.climbMinutes);
+      const py = toY(metrics.wkg);
+      ctx.beginPath();
+      ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = "12px 'Inter', sans-serif";
+      ctx.fillText("La tua scalata", px + 10, py - 10);
+    }
 
-  if (metrics) {
-    ctx.fillStyle = "#f97316";
-    const px = toX(metrics.climbMinutes);
-    const py = toY(metrics.wkg);
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "13px 'Inter', sans-serif";
     ctx.beginPath();
-    ctx.arc(px, py, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.font = "12px Inter, sans-serif";
-    ctx.fillText("La tua scalata", px + 10, py - 10);
-  }
+    ctx.moveTo(margin.left, margin.top);
+    ctx.lineTo(margin.left, margin.top + chartH);
+    ctx.lineTo(margin.left + chartW, margin.top + chartH);
+    ctx.stroke();
+    ctx.fillText("Minuti di salita", margin.left + chartW / 2 - 40, height - 12);
+    ctx.save();
+    ctx.translate(16, margin.top + chartH / 2 + 20);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("Watt/kg", 0, 0);
+    ctx.restore();
+    ctx.restore();
+  }, [metrics]);
 
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.fillStyle = "#cbd5e1";
-  ctx.font = "13px Inter, sans-serif";
-  ctx.beginPath();
-  ctx.moveTo(margin.left, margin.top);
-  ctx.lineTo(margin.left, margin.top + chartH);
-  ctx.lineTo(margin.left + chartW, margin.top + chartH);
-  ctx.stroke();
-  ctx.fillText("Minuti di salita", margin.left + chartW / 2 - 40, height - 12);
-  ctx.save();
-  ctx.translate(14, margin.top + chartH / 2 + 30);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillText("Watt/kg", 0, 0);
-  ctx.restore();
-  ctx.restore();
+  return html`<canvas ref=${canvasRef} class="chart" height="320"></canvas>`;
 }
 
-function exportChart() {
-  const canvas = document.getElementById("comparison-chart");
-  const dateLabel = state.form.climbDate || new Date().toISOString().slice(0, 10);
-  const fileName = `${state.form.climbName || "scalata"}_${dateLabel}`.replace(/\s+/g, "_");
-  const link = document.createElement("a");
-  link.href = canvas.toDataURL("image/png", 1.0);
-  link.download = `${fileName}.png`;
-  link.click();
+function Theory({ metrics }) {
+  return html`<div class="theory">
+    <p class="eyebrow">Fisica semplificata</p>
+    <h3>Come stimiamo il wattaggio</h3>
+    <p>
+      La potenza totale è la somma di componente gravitazionale, attrito di rotolamento e resistenza aerodinamica.
+    </p>
+    <div class="formulae">
+      <span>P<sub>grav</sub> = m · g · v · pendenza</span>
+      <span>P<sub>rot</sub> = C<sub>rr</sub> · m · g · v</span>
+      <span>P<sub>aero</sub> = ½ · ρ · C<sub>dA</sub> · (v + v<sub>vento</sub>)³</span>
+      <span>P<sub>tot</sub> = P<sub>grav</sub> + P<sub>rot</sub> + P<sub>aero</sub></span>
+    </div>
+    <p>
+      La VAM è il dislivello orario, mentre il watt/kg confronta prestazioni indipendenti dalla lunghezza della salita.
+    </p>
+    <div class="bonus">
+      <p class="eyebrow">Bonus relativistico</p>
+      <h4>Dilatazione temporale sul tuo sforzo</h4>
+      <ul>
+        <li>Risparmio GR (Schwarzschild): <strong>${formatNumber(metrics?.gravDelta * 1000, 3, " ms")}</strong></li>
+        <li>Risparmio SR (velocità media): <strong>${formatNumber(metrics?.specialDelta * 1000, 3, " ms")}</strong></li>
+      </ul>
+      <p>Effetti minuscoli ma reali: più sali e più ti muovi veloce, più il tuo tempo proprio diverge.</p>
+    </div>
+  </div>`;
 }
 
-function attachEvents() {
-  document.getElementById("intro-next").addEventListener("click", () => {
-    updateFormFromInputs();
-    if (state.form.age && state.form.sex) setSection(2);
-  });
+function Results({ metrics, onShowInsights, onExport, insight, setInsight }) {
+  return html`<section class="panel results">
+    <div class="card highlight">
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Risultati principali</p>
+          <h2>Il tuo profilo di potenza</h2>
+        </div>
+        <button class="secondary" onClick=${onShowInsights}>Visualizza insights</button>
+      </div>
+      <div class="pill-grid">
+        <div class="pill"><span>VAM</span><strong>${formatNumber(metrics?.vam, 0, " m/h")}</strong></div>
+        <div class="pill"><span>Watt totali</span><strong>${formatNumber(metrics?.totalPower, 0, " W")}</strong></div>
+        <div class="pill"><span>W/kg</span><strong>${formatNumber(metrics?.wkg, 2)}</strong></div>
+        <div class="pill"><span>Fascia</span><strong>${metrics?.category ?? "-"}</strong></div>
+      </div>
+      <div class="secondary-grid">
+        <div>
+          <p class="eyebrow">Pendenza media</p>
+          <h4>${formatNumber(metrics?.grade, 1, "%")}</h4>
+        </div>
+        <div>
+          <p class="eyebrow">Velocità media</p>
+          <h4>${formatNumber(metrics?.avgSpeed, 1, " km/h")}</h4>
+        </div>
+      </div>
+    </div>
 
-  document.getElementById("back-to-intro").addEventListener("click", () => setSection(1));
-
-  document.getElementById("bike-model").addEventListener("input", autofillBike);
-
-  document.querySelectorAll("[data-tab]").forEach((btn) => {
-    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
-  });
-
-  document.querySelectorAll("[data-insight]").forEach((btn) => {
-    btn.addEventListener("click", () => switchInsight(btn.dataset.insight));
-  });
-
-  document.getElementById("open-insights").addEventListener("click", () => {
-    switchInsight("confronto");
-    document.getElementById("results-section").scrollIntoView({ behavior: "smooth" });
-  });
-
-  document.getElementById("export-chart").addEventListener("click", exportChart);
-
-  document.getElementById("calculate").addEventListener("click", () => {
-    const message = validateInputs();
-    const proceed = () => {
-      const metrics = computeMetrics(state.form);
-      if (metrics) {
-        state.metrics = metrics;
-        renderResults(metrics);
-        setSection(3);
-        drawComparisonChart(metrics);
-      }
-    };
-    if (message) openModal(message, proceed);
-    else proceed();
-  });
+    <div class="card">
+      ${html`<${Tabs}
+        active=${insight}
+        onChange=${setInsight}
+        labels=${[
+          { id: "confronto", title: "Confronto" },
+          { id: "teoria", title: "Teoria" },
+        ]}
+      />`}
+      <div class="card-body">
+        ${insight === "confronto"
+          ? html`<div class="card-header stack">
+                <div>
+                  <p class="eyebrow">Curve di riferimento</p>
+                  <h3>Confronta la tua scalata</h3>
+                </div>
+                <button class="ghost" onClick=${onExport}>Esporta grafico</button>
+              </div>
+              <${InsightChart} metrics=${metrics} />`
+          : html`<${Theory} metrics=${metrics} />`}
+      </div>
+    </div>
+  </section>`;
 }
 
-populateCatalog();
-attachEvents();
-switchTab("pesi");
-switchInsight("confronto");
-setSection(1);
+function Toast({ message }) {
+  return html`<div class="toast">${message}</div>`;
+}
+
+function App() {
+  const [form, setForm] = useState({
+    age: "",
+    sex: "",
+    riderWeight: "",
+    bikeWeight: "",
+    bikeModel: "",
+    bikeType: "",
+    elevationGain: "",
+    climbName: "",
+    climbDate: "",
+    headwind: "",
+    time: "",
+    distance: "",
+  });
+  const [step, setStep] = useState(1);
+  const [tab, setTab] = useState("pesi");
+  const [insight, setInsight] = useState("confronto");
+  const [modalMessage, setModalMessage] = useState(null);
+  const [toast, setToast] = useState("");
+
+  const metrics = useMemo(() => computeMetrics(form), [form]);
+
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(""), 2400);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
+
+  const handleNext = () => {
+    if (!form.age || !form.sex) {
+      setToast("Compila età e sesso per continuare");
+      return;
+    }
+    setStep(2);
+  };
+
+  const handleCalculate = () => {
+    const message = validateForm(form);
+    if (message) {
+      setModalMessage(message);
+      return;
+    }
+    handleConfirm();
+  };
+
+  const handleConfirm = () => {
+    if (!metrics) {
+      setToast("Correggi i valori prima di procedere");
+      setModalMessage(null);
+      return;
+    }
+    setStep(3);
+    setInsight("confronto");
+    setModalMessage(null);
+  };
+
+  const exportChart = () => {
+    const canvas = document.querySelector("canvas.chart");
+    if (!canvas) return;
+    const dateLabel = form.climbDate || new Date().toISOString().slice(0, 10);
+    const fileName = `${form.climbName || "scalata"}_${dateLabel}`.replace(/\s+/g, "_");
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png", 1.0);
+    link.download = `${fileName}.png`;
+    link.click();
+  };
+
+  const banner = html`<div class="chip-row">
+    <span class="chip">React 18</span>
+    <span class="chip">Canvas live</span>
+    <span class="chip">No backend</span>
+  </div>`;
+
+  return html`<main class="app">
+    <${ProgressBar} step=${step} />
+
+    ${step === 1 && html`<${Intro} form=${form} setForm=${setForm} onNext=${handleNext} banner=${banner} />`}
+
+    ${step === 2 &&
+    html`<section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Inserimento dati</p>
+            <h2>Completa peso, bici e dettagli della salita</h2>
+          </div>
+          <div class="panel-actions">
+            <button class="ghost" onClick=${() => setStep(1)}>Indietro</button>
+            <button class="primary" onClick=${handleCalculate}>Calcola watt/kg</button>
+          </div>
+        </div>
+        <${Tabs}
+          active=${tab}
+          onChange=${setTab}
+          labels=${[
+            { id: "pesi", title: "Peso & bici" },
+            { id: "salita", title: "Dati salita" },
+          ]}
+        />
+        ${tab === "pesi" ? html`<${WeightTab} form=${form} setForm=${setForm} />` : html`<${ClimbTab} form=${form} setForm=${setForm} />`}
+      </section>`}
+
+    ${step === 3 &&
+    html`<${Results}
+        metrics=${metrics}
+        insight=${insight}
+        setInsight=${setInsight}
+        onShowInsights=${() => setInsight("confronto")}
+        onExport=${exportChart}
+      />`}
+
+    ${toast && html`<${Toast} message=${toast} />`}
+    ${modalMessage &&
+    html`<${Modal}
+        message=${modalMessage}
+        onClose=${() => setModalMessage(null)}
+        onConfirm=${handleConfirm}
+      />`}
+  </main>`;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(html`<${App} />`);

@@ -3,206 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Climb Watts Estimator</title>
+    <title>Watts in Round · React</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <div class="app">
-      <header>
-        <div>
-          <p class="eyebrow">Climbing lab</p>
-          <h1>Watts in Round</h1>
-          <p class="subtitle">
-            Stima i tuoi watt per kg con un flusso guidato, confronta la prestazione con le categorie e scopri gli insight
-            fisici dietro la scalata.
-          </p>
-        </div>
-        <div class="progress" id="progress-steps">
-          <div class="progress-step active" data-step="1"><span>1</span><p>Presentazione</p></div>
-          <div class="progress-step" data-step="2"><span>2</span><p>Inserimento dati</p></div>
-          <div class="progress-step" data-step="3"><span>3</span><p>Risultati</p></div>
-        </div>
-      </header>
+    <div id="root"></div>
 
-      <section class="card hero" id="intro-section">
-        <div>
-          <p class="eyebrow">Benvenuto scalatore</p>
-          <h2>Raccogliamo solo i dati essenziali</h2>
-          <p>
-            Età e sesso biologico ci aiutano a calibrare le fasce prestazionali e a proporre un confronto realistico con gli atleti delle diverse categorie.
-          </p>
-          <div class="grid two">
-            <label>
-              <span>Età</span>
-              <input id="age" type="number" min="10" max="90" placeholder="es. 32" />
-            </label>
-            <label>
-              <span>Sesso biologico</span>
-              <select id="sex">
-                <option value="">Seleziona</option>
-                <option value="M">Maschile</option>
-                <option value="F">Femminile</option>
-                <option value="Altro">Preferisco non indicare</option>
-              </select>
-            </label>
-          </div>
-          <button class="primary" id="intro-next">Avanti</button>
-        </div>
-        <div class="hero-panel">
-          <p class="eyebrow">Cosa inserire</p>
-          <ul>
-            <li>Età e sesso per personalizzare le soglie</li>
-            <li>Tab di pesi e salita per dati completi</li>
-            <li>Convalida automatica dei valori anomali</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="card" id="form-section" hidden>
-        <div class="tab-bar">
-          <button class="active" data-tab="pesi">Peso & bici</button>
-          <button data-tab="salita">Dati salita</button>
-        </div>
-
-        <div class="grid two" id="tab-pesi">
-          <label>
-            <span>Modello bici</span>
-            <input id="bike-model" list="bike-models" placeholder="Inizia a digitare un modello" />
-            <datalist id="bike-models"></datalist>
-          </label>
-          <label>
-            <span>Tipologia</span>
-            <select id="bike-type">
-              <option value="">Seleziona</option>
-              <option value="Corsa">Corsa</option>
-              <option value="MTB">MTB</option>
-              <option value="Gravel">Gravel</option>
-            </select>
-          </label>
-          <label>
-            <span>Peso atleta (kg)</span>
-            <input id="rider-weight" type="number" placeholder="es. 68" min="30" />
-          </label>
-          <label>
-            <span>Peso bici (kg)</span>
-            <input id="bike-weight" type="number" placeholder="es. 7.2" min="5" step="0.1" />
-          </label>
-        </div>
-
-        <div class="grid two" id="tab-salita" hidden>
-          <label>
-            <span>Nome salita</span>
-            <input id="climb-name" type="text" placeholder="es. Zoncolan" />
-          </label>
-          <label>
-            <span>Data (opzionale)</span>
-            <input id="climb-date" type="date" />
-          </label>
-          <label>
-            <span>Dislivello (m)</span>
-            <input id="elevation" type="number" placeholder="es. 1200" />
-          </label>
-          <label>
-            <span>Distanza (km)</span>
-            <input id="distance" type="number" placeholder="es. 12.5" step="0.1" />
-          </label>
-          <label>
-            <span>Tempo (hh:mm:ss)</span>
-            <input id="duration" type="text" placeholder="00:45:30" />
-          </label>
-          <label>
-            <span>Vento (m/s, opzionale)</span>
-            <input id="headwind" type="number" placeholder="positivo = contrario" step="0.1" />
-          </label>
-        </div>
-
-        <div class="actions">
-          <button class="ghost" id="back-to-intro">Indietro</button>
-          <button class="primary" id="calculate">Calcola watt/kg</button>
-        </div>
-      </section>
-
-      <section class="results" id="results-section" hidden>
-        <div class="card highlight">
-          <p class="eyebrow">Risultati principali</p>
-          <div class="pill-grid">
-            <div class="pill"><span>VAM</span><strong id="vam-value">-</strong></div>
-            <div class="pill"><span>Watt totali</span><strong id="power-value">-</strong></div>
-            <div class="pill"><span>W/kg</span><strong id="wkg-value">-</strong></div>
-            <div class="pill"><span>Fascia prestazionale</span><strong id="band-value">-</strong></div>
-          </div>
-          <div class="secondary-grid">
-            <div>
-              <p class="eyebrow">Pendenza media</p>
-              <h4 id="grade-value">-</h4>
-            </div>
-            <div>
-              <p class="eyebrow">Velocità media</p>
-              <h4 id="speed-value">-</h4>
-            </div>
-          </div>
-          <button class="secondary" id="open-insights">Visualizza insights</button>
-        </div>
-
-        <div class="card">
-          <div class="tab-bar">
-            <button class="active" data-insight="confronto">Confronto</button>
-            <button data-insight="teoria">Teoria</button>
-          </div>
-          <div id="insight-confronto">
-            <div class="card-header">
-              <div>
-                <p class="eyebrow">Tab Confronto</p>
-                <h3>Curva di riferimento vs tua prestazione</h3>
-              </div>
-              <button class="ghost" id="export-chart">Esporta grafico</button>
-            </div>
-            <div class="chart-wrapper">
-              <canvas id="comparison-chart" height="320"></canvas>
-            </div>
-          </div>
-          <div id="insight-teoria" hidden>
-            <div class="card theory">
-              <p class="eyebrow">Tab Teoria</p>
-              <h3>La fisica dietro il wattaggio</h3>
-              <p>
-                Il modello scompone la potenza nelle tre componenti principali: gravità, attrito di rotolamento e resistenza aerodinamica. Inseriamo coefficienti coerenti con bici da corsa e MTB.
-              </p>
-              <div class="formulae">
-                <span>P<sub>grav</sub> = m · g · v · pendenza</span>
-                <span>P<sub>rot</sub> = C<sub>rr</sub> · m · g · v</span>
-                <span>P<sub>aero</sub> = ½ · ρ · C<sub>dA</sub> · (v + v<sub>vento</sub>)³</span>
-                <span>P<sub>tot</sub> = P<sub>grav</sub> + P<sub>rot</sub> + P<sub>aero</sub></span>
-              </div>
-              <p>
-                La VAM (Velocità Ascensionale Media) è il dislivello orario. Il rapporto watt/kg usa la sola massa dell'atleta per confrontare prestazioni su tempi di salita differenti.
-              </p>
-              <div class="bonus">
-                <p class="eyebrow">Bonus relativistico</p>
-                <h4>Dilatazione temporale sul tuo sforzo</h4>
-                <ul>
-                  <li>Risparmio GR (Schwarzschild): <strong id="grav-delta">-</strong></li>
-                  <li>Risparmio SR (velocità media): <strong id="sr-delta">-</strong></li>
-                </ul>
-                <p>Effetti minuscoli ma reali: salendo più in alto e muovendoti a velocità costante il tuo tempo proprio diverge da quello di un osservatore fermo al livello del mare.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <div class="modal-backdrop" id="modal" hidden>
-      <div class="modal">
-        <h4>Controllo di compatibilità</h4>
-        <p id="modal-message"></p>
-        <div class="modal-actions">
-          <button class="ghost" id="modal-close">Torna indietro</button>
-          <button class="primary" id="modal-confirm">Procedi comunque</button>
-        </div>
-      </div>
-    </div>
-
-    <script type="module" src="/src/main.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js" crossorigin></script>
+    <script src="/src/main.js"></script>
   </body>
 </html>

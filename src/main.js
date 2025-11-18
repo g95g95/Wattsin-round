@@ -94,8 +94,13 @@ function computeMetrics(form) {
   const riderWeight = Number(form.riderWeight);
   const bikeWeight = Number(form.bikeWeight);
   const mass = riderWeight + bikeWeight;
-  const gain = Number(form.elevationGain);
-  const distance = Number(form.distance) * 1000;
+  const distanceKm = Number(form.distance);
+  const distance = distanceKm * 1000;
+  let gain = Number(form.elevationGain);
+  const gradeInput = Number(form.grade) / 100;
+  if ((!gain || gain <= 0) && gradeInput > 0) {
+    gain = gradeInput * distance;
+  }
   const headwind = Number(form.headwind || 0);
   const seconds = parseDuration(form.time);
   if (!seconds || seconds <= 0 || !mass || !gain || !distance) return null;
@@ -127,22 +132,25 @@ function computeMetrics(form) {
 }
 
 function validateForm(form) {
-  const required = ["age", "sex", "riderWeight", "bikeWeight", "elevationGain", "time", "distance"];
+  const required = ["age", "sex", "riderWeight", "bikeWeight", "time", "distance"];
   const missing = required.filter((key) => !form[key]);
-  if (missing.length) return "Compila i campi essenziali: età, sesso, pesi, dislivello, tempo e distanza.";
+  if (missing.length) return "Compila i campi essenziali: età, sesso, pesi, tempo e distanza.";
 
-  const numbers = ["riderWeight", "bikeWeight", "elevationGain", "distance"].map((key) => Number(form[key]));
+  const numbers = ["riderWeight", "bikeWeight", "distance"].map((key) => Number(form[key]));
   if (numbers.some((n) => !Number.isFinite(n) || n <= 0)) {
-    return "Verifica che pesi, dislivello e distanza siano numeri positivi.";
+    return "Verifica che pesi e distanza siano numeri positivi.";
   }
 
   const seconds = parseDuration(form.time);
   if (!seconds || seconds <= 0) return "Il tempo deve essere nel formato hh:mm:ss e maggiore di zero.";
   const distance = Number(form.distance) * 1000;
-  const grade = Number(form.elevationGain) / distance;
-  if (grade > 0.25 || grade < 0.02) {
-    return "La pendenza media sembra anomala (<2% o >25%). Controlla i dati.";
-  }
+  const gainInput = Number(form.elevationGain);
+  const gradeInput = Number(form.grade) / 100;
+  const gain = gainInput > 0 ? gainInput : gradeInput > 0 ? gradeInput * distance : 0;
+  if (!gain) return "Inserisci dislivello oppure la pendenza della salita.";
+
+  const grade = gain / distance;
+  if (grade > 0.25 || grade < 0.02) return "La pendenza media sembra anomala (<2% o >25%). Controlla i dati.";
   return null;
 }
 
@@ -271,6 +279,11 @@ function WeightTab({ form, setForm }) {
 }
 
 function ClimbTab({ form, setForm }) {
+  const modeLabels = [
+    { id: "gain", title: "Dislivello" },
+    { id: "grade", title: "Pendenza" },
+  ];
+
   return html`<div class="grid two fade-in">
     <label>
       <span>Nome salita</span>
@@ -285,16 +298,32 @@ function ClimbTab({ form, setForm }) {
       <span>Data (opzionale)</span>
       <input type="date" value=${form.climbDate} onInput=${(e) => setForm((f) => ({ ...f, climbDate: e.target.value }))} />
     </label>
-    <label>
-      <span>Dislivello (m)</span>
-      <input
-        type="number"
-        min="50"
-        placeholder="es. 1200"
-        value=${form.elevationGain}
-        onInput=${(e) => setForm((f) => ({ ...f, elevationGain: e.target.value }))}
-      />
-    </label>
+    <div class="stack" style=${{ gap: "8px" }}>
+      <p class="eyebrow">Inserimento salita</p>
+      <${Tabs} active=${form.climbMode} onChange=${(id) => setForm((f) => ({ ...f, climbMode: id }))} labels=${modeLabels} />
+      ${form.climbMode === "gain"
+        ? html`<label>
+            <span>Dislivello (m)</span>
+            <input
+              type="number"
+              min="50"
+              placeholder="es. 1200"
+              value=${form.elevationGain}
+              onInput=${(e) => setForm((f) => ({ ...f, elevationGain: e.target.value }))}
+            />
+          </label>`
+        : html`<label>
+            <span>Pendenza media (%)</span>
+            <input
+              type="number"
+              step="0.1"
+              min="1"
+              placeholder="es. 8"
+              value=${form.grade}
+              onInput=${(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
+            />
+          </label>`}
+    </div>
     <label>
       <span>Distanza (km)</span>
       <input
@@ -356,30 +385,34 @@ function InsightChart({ metrics }) {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, width, height);
 
-    const margin = { top: 24, right: 18, bottom: 48, left: 56 };
+    const margin = { top: 24, right: 18, bottom: 56, left: 64 };
     const chartW = width - margin.left - margin.right;
     const chartH = height - margin.top - margin.bottom;
 
-    const maxX = 65;
+    const maxX = 70;
     const maxY = 8;
     const toX = (x) => margin.left + (x / maxX) * chartW;
     const toY = (y) => margin.top + chartH - (y / maxY) * chartH;
 
     ctx.strokeStyle = "rgba(148,163,184,0.2)";
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-      const y = margin.top + (chartH / 5) * i;
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "12px 'Inter', sans-serif";
+    for (let i = 0; i <= maxY; i++) {
+      const y = toY(i);
       ctx.beginPath();
       ctx.moveTo(margin.left, y);
       ctx.lineTo(margin.left + chartW, y);
       ctx.stroke();
+      ctx.fillText(i.toString(), margin.left - 42, y + 4);
     }
-    for (let i = 1; i <= 6; i++) {
-      const x = margin.left + (chartW / 6) * i;
+    for (let i = 0; i <= 60; i += 10) {
+      const x = toX(i);
       ctx.beginPath();
       ctx.moveTo(x, margin.top);
       ctx.lineTo(x, margin.top + chartH);
       ctx.stroke();
+      ctx.fillText(i.toString(), x - 6, margin.top + chartH + 18);
     }
 
     const colors = ["#22d3ee", "#0ea5e9", "#f59e0b", "#a78bfa"];
@@ -418,6 +451,15 @@ function InsightChart({ metrics }) {
       ctx.fillText("La tua scalata", px + 10, py - 10);
     }
 
+    const pogacar = { minutes: 40, wkg: 7, label: "Pogačar Plateau de Beille" };
+    ctx.fillStyle = "#fb7185";
+    ctx.strokeStyle = "#fb7185";
+    ctx.beginPath();
+    ctx.arc(toX(pogacar.minutes), toY(pogacar.wkg), 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = "12px 'Inter', sans-serif";
+    ctx.fillText(pogacar.label, toX(pogacar.minutes) + 10, toY(pogacar.wkg) - 10);
+
     ctx.strokeStyle = "#cbd5e1";
     ctx.fillStyle = "#cbd5e1";
     ctx.font = "13px 'Inter', sans-serif";
@@ -426,7 +468,7 @@ function InsightChart({ metrics }) {
     ctx.lineTo(margin.left, margin.top + chartH);
     ctx.lineTo(margin.left + chartW, margin.top + chartH);
     ctx.stroke();
-    ctx.fillText("Minuti di salita", margin.left + chartW / 2 - 40, height - 12);
+    ctx.fillText("Minuti di salita", margin.left + chartW / 2 - 40, height - 16);
     ctx.save();
     ctx.translate(16, margin.top + chartH / 2 + 20);
     ctx.rotate(-Math.PI / 2);
@@ -454,16 +496,16 @@ function Theory({ metrics }) {
     <p>
       La VAM è il dislivello orario, mentre il watt/kg confronta prestazioni indipendenti dalla lunghezza della salita.
     </p>
-    <div class="bonus">
-      <p class="eyebrow">Bonus relativistico</p>
-      <h4>Dilatazione temporale sul tuo sforzo</h4>
-      <ul>
-        <li>Risparmio GR (Schwarzschild): <strong>${formatNumber(metrics?.gravDelta * 1000, 3, " ms")}</strong></li>
-        <li>Risparmio SR (velocità media): <strong>${formatNumber(metrics?.specialDelta * 1000, 3, " ms")}</strong></li>
-      </ul>
-      <p>Effetti minuscoli ma reali: più sali e più ti muovi veloce, più il tuo tempo proprio diverge.</p>
-    </div>
-  </div>`;
+      <div class="bonus">
+        <p class="eyebrow">Bonus relativistico</p>
+        <h4>Dilatazione temporale sul tuo sforzo</h4>
+        <ul>
+        <li>Risparmio GR (Schwarzschild): <strong>${formatNumber(metrics?.gravDelta * 1e15, 3, " fs")}</strong></li>
+        <li>Risparmio SR (velocità media): <strong>${formatNumber(metrics?.specialDelta * 1e15, 3, " fs")}</strong></li>
+        </ul>
+        <p>Effetti minuscoli ma reali: più sali e più ti muovi veloce, più il tuo tempo proprio diverge.</p>
+      </div>
+    </div>`;
 }
 
 function Results({ metrics, onShowInsights, onExport, insight, setInsight }) {
@@ -532,6 +574,8 @@ function App() {
     bikeModel: "",
     bikeType: "",
     elevationGain: "",
+    grade: "",
+    climbMode: "gain",
     climbName: "",
     climbDate: "",
     headwind: "",

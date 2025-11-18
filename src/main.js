@@ -278,7 +278,7 @@ function WeightTab({ form, setForm }) {
   </div>`;
 }
 
-function ClimbTab({ form, setForm }) {
+function ClimbTab({ form, setForm, onOpenRouteDrawer }) {
   const modeLabels = [
     { id: "gain", title: "Dislivello" },
     { id: "grade", title: "Pendenza" },
@@ -299,8 +299,15 @@ function ClimbTab({ form, setForm }) {
       <input type="date" value=${form.climbDate} onInput=${(e) => setForm((f) => ({ ...f, climbDate: e.target.value }))} />
     </label>
     <div class="stack" style=${{ gap: "8px" }}>
-      <p class="eyebrow">Inserimento salita</p>
-      <${Tabs} active=${form.climbMode} onChange=${(id) => setForm((f) => ({ ...f, climbMode: id }))} labels=${modeLabels} />
+      <div class="row-between">
+        <div>
+          <p class="eyebrow">Inserimento salita</p>
+          <${Tabs} active=${form.climbMode} onChange=${(id) => setForm((f) => ({ ...f, climbMode: id }))} labels=${modeLabels} />
+        </div>
+        <button class="secondary" onClick=${onOpenRouteDrawer}>
+          Disegna il percorso
+        </button>
+      </div>
       ${form.climbMode === "gain"
         ? html`<label>
             <span>Dislivello (m)</span>
@@ -353,6 +360,135 @@ function ClimbTab({ form, setForm }) {
         onInput=${(e) => setForm((f) => ({ ...f, headwind: e.target.value }))}
       />
     </label>
+  </div>`;
+}
+
+function MapDrawer({ open, onClose, onComplete, initialGrade = 7 }) {
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const drawnRef = useRef(null);
+  const [grade, setGrade] = useState(Number(initialGrade) || 7);
+
+  useEffect(() => {
+    setGrade(Number(initialGrade) || 7);
+  }, [initialGrade]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!containerRef.current) return;
+    const hasLeaflet = typeof window !== "undefined" && window.L;
+    if (!hasLeaflet) return;
+
+    if (!mapRef.current) {
+      const map = L.map(containerRef.current).setView([44.5, 11.3], 5.7);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "© OpenStreetMap",
+      }).addTo(map);
+
+      const drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
+
+      const drawControl = new L.Control.Draw({
+        draw: {
+          polyline: { showLength: true },
+          polygon: false,
+          rectangle: false,
+          circle: false,
+          marker: false,
+          circlemarker: false,
+        },
+        edit: { featureGroup: drawnItems, edit: false },
+      });
+      map.addControl(drawControl);
+
+      map.on(L.Draw.Event.CREATED, (event) => {
+        drawnItems.clearLayers();
+        drawnItems.addLayer(event.layer);
+        drawnRef.current = event.layer;
+      });
+
+      mapRef.current = map;
+    }
+
+    setTimeout(() => mapRef.current.invalidateSize(), 120);
+  }, [open]);
+
+  const computeDistance = (points) => {
+    let total = 0;
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      const R = 6371000;
+      const toRad = (deg) => (deg * Math.PI) / 180;
+      const dLat = toRad(b.lat - a.lat);
+      const dLon = toRad(b.lng - a.lng);
+      const lat1 = toRad(a.lat);
+      const lat2 = toRad(b.lat);
+      const h =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+      total += 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    }
+    return total;
+  };
+
+  const finish = () => {
+    const layer = drawnRef.current;
+    if (!layer) return;
+    const coords = layer.getLatLngs().flat(Infinity);
+    if (!coords.length) return;
+    const distanceMeters = computeDistance(coords);
+    if (!distanceMeters) return;
+    const distanceKm = distanceMeters / 1000;
+    const elevationGain = distanceMeters * (grade / 100);
+    onComplete({ distanceKm, elevationGain, grade });
+  };
+
+  if (!open) return null;
+
+  const hasLeaflet = typeof window !== "undefined" && window.L;
+
+  return html`<div class="drawer-backdrop">
+    <div class="drawer">
+      <div class="drawer-header">
+        <div>
+          <p class="eyebrow">Disegna il percorso</p>
+          <h3>Traccia la tua scalata sulla mappa</h3>
+        </div>
+        <button class="ghost" onClick=${onClose}>Chiudi</button>
+      </div>
+      ${hasLeaflet
+        ? html`<div class="drawer-content">
+            <div ref=${containerRef} class="map-canvas"></div>
+            <div class="drawer-panel">
+              <p class="eyebrow">Stima pendenza media</p>
+              <div class="grade-slider">
+                <input
+                  type="range"
+                  min="2"
+                  max="18"
+                  step="0.5"
+                  value=${grade}
+                  onInput=${(e) => setGrade(Number(e.target.value))}
+                />
+                <span>${grade.toFixed(1)}%</span>
+              </div>
+              <p class="muted">
+                Disegna una polilinea del percorso. La distanza viene ricavata dalla lunghezza del tracciato; il dislivello è stimato
+                dalla pendenza media impostata.
+              </p>
+              <div class="drawer-actions">
+                <button class="ghost" onClick=${onClose}>Annulla</button>
+                <button class="primary" onClick=${finish}>Finisci il percorso</button>
+              </div>
+            </div>
+          </div>`
+        : html`<div class="drawer-fallback">
+            <p>Impossibile caricare la mappa: controlla la connessione o ricarica la pagina.</p>
+            <button class="primary" onClick=${onClose}>Chiudi</button>
+          </div>`}
+    </div>
   </div>`;
 }
 
@@ -587,8 +723,20 @@ function App() {
   const [insight, setInsight] = useState("confronto");
   const [modalMessage, setModalMessage] = useState(null);
   const [toast, setToast] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const metrics = useMemo(() => computeMetrics(form), [form]);
+  const estimatedGrade = useMemo(() => {
+    const grade = Number(form.grade);
+    if (grade > 0) return Math.min(Math.max(grade, 2), 18);
+    const gain = Number(form.elevationGain);
+    const dist = Number(form.distance);
+    if (gain > 0 && dist > 0) {
+      const derived = (gain / (dist * 1000)) * 100;
+      return Math.min(Math.max(derived, 2), 18);
+    }
+    return 7;
+  }, [form.grade, form.elevationGain, form.distance]);
 
   useEffect(() => {
     if (toast) {
@@ -623,6 +771,18 @@ function App() {
     setStep(3);
     setInsight("confronto");
     setModalMessage(null);
+  };
+
+  const handleRouteComplete = ({ distanceKm, elevationGain, grade }) => {
+    setForm((f) => ({
+      ...f,
+      distance: distanceKm.toFixed(2),
+      elevationGain: Math.round(elevationGain).toString(),
+      grade: grade.toFixed(1),
+    }));
+    setDrawerOpen(false);
+    setTab("salita");
+    setToast(`Percorso importato: ${distanceKm.toFixed(1)} km, dislivello ~${Math.round(elevationGain)} m`);
   };
 
   const exportChart = () => {
@@ -667,7 +827,13 @@ function App() {
             { id: "salita", title: "Dati salita" },
           ]}
         />
-        ${tab === "pesi" ? html`<${WeightTab} form=${form} setForm=${setForm} />` : html`<${ClimbTab} form=${form} setForm=${setForm} />`}
+        ${tab === "pesi"
+          ? html`<${WeightTab} form=${form} setForm=${setForm} />`
+          : html`<${ClimbTab}
+              form=${form}
+              setForm=${setForm}
+              onOpenRouteDrawer=${() => setDrawerOpen(true)}
+            />`}
       </section>`}
 
     ${step === 3 &&
@@ -686,6 +852,12 @@ function App() {
         onClose=${() => setModalMessage(null)}
         onConfirm=${handleConfirm}
       />`}
+    <${MapDrawer}
+      open=${drawerOpen}
+      onClose=${() => setDrawerOpen(false)}
+      onComplete=${handleRouteComplete}
+      initialGrade=${estimatedGrade}
+    />
   </main>`;
 }
 

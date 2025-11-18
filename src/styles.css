@@ -324,6 +324,97 @@ button:active {
   margin-top: 14px;
 }
 
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 11, 23, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  padding: 16px;
+}
+
+.drawer {
+  width: min(1100px, 96vw);
+  max-height: 90vh;
+  background: #0c1424;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.drawer-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drawer-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+.map-canvas {
+  width: 100%;
+  height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.leaflet-container {
+  border-radius: 12px;
+}
+
+.drawer-panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.grade-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.grade-slider input[type="range"] {
+  flex: 1;
+}
+
+.drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.drawer-fallback {
+  padding: 24px;
+  text-align: center;
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
@@ -391,5 +482,13 @@ button:active {
 
   .progress {
     grid-template-columns: 1fr;
+  }
+
+  .drawer-content {
+    grid-template-columns: 1fr;
+  }
+
+  .map-canvas {
+    height: 320px;
   }
 }
